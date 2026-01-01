@@ -8,18 +8,12 @@ HF_API_KEY = os.getenv("HF_API_KEY")
 HF_URL = "https://api-inference.huggingface.co/models/google/flan-t5-base"
 
 
-# ✅ GLOBAL CORS HEADERS (MOST IMPORTANT)
+# ✅ ADD CORS HEADERS FOR EVERY RESPONSE
 @app.after_request
-def after_request(response):
-    response.headers.add("Access-Control-Allow-Origin", "*")
-    response.headers.add(
-        "Access-Control-Allow-Headers",
-        "Content-Type, Authorization"
-    )
-    response.headers.add(
-        "Access-Control-Allow-Methods",
-        "GET, POST, OPTIONS"
-    )
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
     return response
 
 
@@ -28,17 +22,15 @@ def home():
     return "Krishibandh AI Backend Running ✅"
 
 
-# ✅ HANDLE OPTIONS SEPARATELY (NO JSON TOUCH)
+# ✅ HANDLE PREFLIGHT (OPTIONS) REQUEST
 @app.route("/crop-advice", methods=["OPTIONS"])
 def crop_advice_options():
     return make_response("", 204)
 
 
-# ✅ ACTUAL POST ENDPOINT
+# ✅ HANDLE ACTUAL POST REQUEST
 @app.route("/crop-advice", methods=["POST"])
 def crop_advice():
-
-    # ⚠️ force=False to avoid 415
     data = request.get_json(silent=True)
     text = data.get("text", "") if data else ""
 
