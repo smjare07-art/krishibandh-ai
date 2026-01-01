@@ -1,26 +1,25 @@
 from flask import Flask, request, jsonify, make_response
 import requests
 import os
-from flask_cors import CORS
 
 app = Flask(__name__)
-
-# ✅ STRICT + SAFE CORS CONFIG (NULL ORIGIN INCLUDED)
-CORS(
-    app,
-    resources={r"/*": {"origins": "*"}},
-    supports_credentials=False
-)
 
 HF_API_KEY = os.getenv("HF_API_KEY")
 HF_URL = "https://api-inference.huggingface.co/models/google/flan-t5-base"
 
 
+# ✅ GLOBAL CORS HEADERS (MOST IMPORTANT)
 @app.after_request
-def add_cors_headers(response):
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+def after_request(response):
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    response.headers.add(
+        "Access-Control-Allow-Headers",
+        "Content-Type, Authorization"
+    )
+    response.headers.add(
+        "Access-Control-Allow-Methods",
+        "GET, POST, OPTIONS"
+    )
     return response
 
 
@@ -29,15 +28,19 @@ def home():
     return "Krishibandh AI Backend Running ✅"
 
 
-@app.route("/crop-advice", methods=["POST", "OPTIONS"])
+# ✅ HANDLE OPTIONS SEPARATELY (NO JSON TOUCH)
+@app.route("/crop-advice", methods=["OPTIONS"])
+def crop_advice_options():
+    return make_response("", 204)
+
+
+# ✅ ACTUAL POST ENDPOINT
+@app.route("/crop-advice", methods=["POST"])
 def crop_advice():
 
-    # ✅ HANDLE PREFLIGHT MANUALLY
-    if request.method == "OPTIONS":
-        return make_response("", 200)
-
-    data = request.get_json(force=True)
-    text = data.get("text", "")
+    # ⚠️ force=False to avoid 415
+    data = request.get_json(silent=True)
+    text = data.get("text", "") if data else ""
 
     headers = {
         "Authorization": f"Bearer {HF_API_KEY}"
@@ -47,7 +50,13 @@ def crop_advice():
         "inputs": text
     }
 
-    hf_response = requests.post(HF_URL, headers=headers, json=payload, timeout=60)
+    hf_response = requests.post(
+        HF_URL,
+        headers=headers,
+        json=payload,
+        timeout=60
+    )
+
     return jsonify(hf_response.json())
 
 
